@@ -11,12 +11,20 @@ import com.udacity.project4.databinding.FragmentLoginBinding
 
 class LoginFragment : Fragment() {
 
+    private lateinit var binding:FragmentLoginBinding
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        val binding = DataBindingUtil.inflate<FragmentLoginBinding>(inflater,R.layout.fragment_login, container, false)
+        binding = DataBindingUtil.inflate<FragmentLoginBinding>(inflater,R.layout.fragment_login, container, false)
         return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        binding.fragmentLoginButton.setOnClickListener {  }
     }
 }
