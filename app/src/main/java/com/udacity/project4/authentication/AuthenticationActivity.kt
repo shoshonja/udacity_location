@@ -101,6 +101,8 @@ class AuthenticationActivity : AppCompatActivity() {
     private fun checkPermissionsAndProceed() {
         if (!permissionsGranted()) {
             requestPermissions()
+        } else {
+            navigateAway()
         }
 
     }
