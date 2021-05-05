@@ -139,6 +139,7 @@ class AuthenticationActivity : AppCompatActivity() {
         ActivityCompat.requestPermissions(this, permissionArray, resultCode)
     }
 
+    //TODO something is fishy here, test this thoroughly!
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,

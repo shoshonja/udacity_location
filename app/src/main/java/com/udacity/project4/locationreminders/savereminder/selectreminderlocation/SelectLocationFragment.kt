@@ -1,33 +1,23 @@
 package com.udacity.project4.locationreminders.savereminder.selectreminderlocation
 
 
-import android.Manifest
-import android.app.Activity
-import android.content.Intent
-import android.content.IntentSender
-import android.content.pm.PackageManager
-import android.content.res.Resources
+import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import android.view.*
-import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
-import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.ResolvableApiException
-import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.*
-import com.google.android.material.snackbar.Snackbar
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
-import com.udacity.project4.base.NavigationCommand
 import com.udacity.project4.databinding.FragmentSelectLocationBinding
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
 import org.koin.android.ext.android.inject
+import java.util.*
 
 class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
@@ -38,6 +28,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     private lateinit var map: GoogleMap
 
 
+    @SuppressLint("MissingPermission")
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
@@ -49,6 +40,12 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
         setHasOptionsMenu(true)
         setDisplayHomeAsUpEnabled(true)
+
+        val mapFragment = childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
+        mapFragment.getMapAsync(this)
+
+//        val currentLocation = LocationServices.FusedLocationApi.getLastLocation(googleApiClient)
+
 
 //        TODO: add the map setup implementation
 //        TODO: zoom to the user location after taking his permission
@@ -96,7 +93,59 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
+
+        val locationKrvavec = LatLng(46.286120434051774, 14.495988189451165)
+        val zoomLevel = 15f
+
+
+        map.addMarker(MarkerOptions().position(locationKrvavec).title("Krvavec"))
+        map.moveCamera(CameraUpdateFactory.newLatLngZoom(locationKrvavec, zoomLevel))
+
+        setMapLongClick(map)
+        setPoiClick(map)
+
+//        map.setOnMyLocationChangeListener { location ->
+//            map.addMarker(
+//                MarkerOptions().position(
+//                    LatLng(
+//                        location.latitude,
+//                        location.longitude
+//                    )
+//                ).title("It's Me!")
+//            )
+//        }
     }
 
+    private fun setMapLongClick(map: GoogleMap) {
+        map.setOnMapLongClickListener { latLang ->
+
+            val snippet = String.format(
+                Locale.getDefault(),
+                "Lat: %1$.5f, Long: %2$.5f",
+                latLang.latitude,
+                latLang.longitude
+            )
+
+            map.addMarker(
+                MarkerOptions()
+                    .position(latLang)
+                    .title(getString(R.string.dropped_pin))
+                    .snippet(snippet)
+            )
+        }
+    }
+
+    private fun setPoiClick(map: GoogleMap) {
+        map.setOnPoiClickListener { poi ->
+            val poiMarker = map.addMarker(
+                MarkerOptions()
+                    .position(poi.latLng)
+                    .title(poi.name)
+            )
+
+            poiMarker.showInfoWindow()
+
+        }
+    }
 
 }
