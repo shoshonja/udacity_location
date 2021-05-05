@@ -25,15 +25,9 @@ class AuthenticationActivity : AppCompatActivity() {
 
     companion object {
         private const val SIGN_IN_REQUEST_CODE = 1001
-        private const val REQUEST_FOREGROUND_AND_BACKGROUND_PERMISSION_RESULT_CODE = 33
-        private const val REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE = 34
-        private const val REQUEST_TURN_DEVICE_LOCATION_ON = 29
-        private const val LOCATION_PERMISSION_INDEX = 0
-        private const val BACKGROUND_LOCATION_PERMISSION_INDEX = 1
     }
 
-    private var runningQOrLater = android.os.Build.VERSION.SDK_INT >=
-            android.os.Build.VERSION_CODES.Q
+
 
     private lateinit var binding: ActivityAuthenticationBinding
     private lateinit var viewModel: AuthenticationViewModel
@@ -90,72 +84,11 @@ class AuthenticationActivity : AppCompatActivity() {
         if (requestCode == SIGN_IN_REQUEST_CODE) {
 //            val response = IdpResponse.fromResultIntent(data)
             if (resultCode == Activity.RESULT_OK) {
-                checkPermissionsAndProceed()
-//                startActivity(Intent(this, RemindersActivity::class.java))
-//                finish()
-//                findNavController().navigate(LoginFragmentDirections.actionLoginFragmentToSaveReminderFragment())
+                navigateAway()
             }
         }
     }
 
-    private fun checkPermissionsAndProceed() {
-        if (!permissionsGranted()) {
-            requestPermissions()
-        } else {
-            navigateAway()
-        }
-
-    }
-
-
-    private fun permissionsGranted(): Boolean {
-        val foregroundLocationApproved = (
-                PackageManager.PERMISSION_GRANTED ==
-                        ActivityCompat.checkSelfPermission(
-                            this,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                        ))
-        val backgroundPermissionApproved =
-            if (runningQOrLater) {
-                PackageManager.PERMISSION_GRANTED ==
-                        ActivityCompat.checkSelfPermission(
-                            this, Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                        )
-            } else {
-                true
-            }
-        return foregroundLocationApproved && backgroundPermissionApproved
-    }
-
-    private fun requestPermissions() {
-        var permissionArray = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
-        var resultCode = when {
-            runningQOrLater -> {
-                permissionArray += Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                REQUEST_FOREGROUND_AND_BACKGROUND_PERMISSION_RESULT_CODE
-            }
-            else -> REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE
-        }
-        ActivityCompat.requestPermissions(this, permissionArray, resultCode)
-    }
-
-    //TODO something is fishy here, test this thoroughly!
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        if (grantResults.isEmpty() ||
-            grantResults[LOCATION_PERMISSION_INDEX] == PackageManager.PERMISSION_DENIED ||
-            (requestCode == REQUEST_FOREGROUND_AND_BACKGROUND_PERMISSION_RESULT_CODE &&
-                    grantResults[BACKGROUND_LOCATION_PERMISSION_INDEX] ==
-                    PackageManager.PERMISSION_DENIED)
-        ) {
-            Toast.makeText(this, "You cannot deny me!", Toast.LENGTH_SHORT).show()
-        } else {
-            navigateAway()
-        }
-    }
 
     private fun navigateAway() {
         startActivity(Intent(this, RemindersActivity::class.java))
