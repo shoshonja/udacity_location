@@ -25,6 +25,7 @@
             android:id="@+id/fragment_select_location_button_save"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:onClick="@{()->viewModel.savePOI()}"
             android:text="@string/save"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

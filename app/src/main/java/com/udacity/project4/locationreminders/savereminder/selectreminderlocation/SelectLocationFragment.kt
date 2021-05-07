@@ -9,6 +9,7 @@ import android.view.*
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.databinding.DataBindingUtil
+import androidx.navigation.fragment.findNavController
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -51,6 +52,12 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         binding.viewModel = _viewModel
         binding.lifecycleOwner = this
 
+        _viewModel.goBack.observe(viewLifecycleOwner, androidx.lifecycle.Observer {
+            if(_viewModel.goBack.value!!){
+                findNavController().popBackStack()
+            }
+        })
+
         setHasOptionsMenu(true)
         setDisplayHomeAsUpEnabled(true)
 
@@ -63,7 +70,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
 
 //        TODO: call this function after the user confirms on the selected location
-        onLocationSelected()
+//        onLocationSelected()
 
         return binding.root
     }
@@ -82,6 +89,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        _viewModel.onClear()
         checkAndRequestFineLocation()
     }
 
@@ -147,7 +155,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
                     "Foreground permission granted",
                     Toast.LENGTH_SHORT
                 ).show()
-                if(runningQOrLater){
+                if (runningQOrLater) {
                     checkAndRequestBackgroundLocation()
                 }
             } else {
@@ -208,39 +216,11 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
 
-        val locationKrvavec = LatLng(46.286120434051774, 14.495988189451165)
-        val zoomLevel = 15f
-
-
-        map.addMarker(MarkerOptions().position(locationKrvavec).title("Krvavec"))
-        map.moveCamera(CameraUpdateFactory.newLatLngZoom(locationKrvavec, zoomLevel))
-
         if (permissionsGranted()) {
             map.isMyLocationEnabled = true
         }
 
-        setMapLongClick(map)
         setPoiClick(map)
-    }
-
-    private fun setMapLongClick(map: GoogleMap) {
-        map.setOnMapLongClickListener { latLang ->
-
-            val snippet = String.format(
-                Locale.getDefault(),
-                "Lat: %1$.5f, Long: %2$.5f",
-                latLang.latitude,
-                latLang.longitude
-            )
-
-            map.clear()
-            map.addMarker(
-                MarkerOptions()
-                    .position(latLang)
-                    .title(getString(R.string.dropped_pin))
-                    .snippet(snippet)
-            )
-        }
     }
 
     private fun setPoiClick(map: GoogleMap) {
@@ -251,11 +231,9 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
                     .position(poi.latLng)
                     .title(poi.name)
             )
-
+            _viewModel.selectedPOI.value = poi
             poiMarker.showInfoWindow()
-
         }
     }
-
 
 }
