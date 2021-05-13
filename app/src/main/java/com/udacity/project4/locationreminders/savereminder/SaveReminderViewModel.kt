@@ -1,10 +1,10 @@
 package com.udacity.project4.locationreminders.savereminder
 
 import android.app.Application
+import android.content.pm.PackageManager
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.PointOfInterest
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseViewModel
@@ -16,6 +16,13 @@ import kotlinx.coroutines.launch
 
 class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSource) :
     BaseViewModel(app) {
+
+
+    val REQUEST_FINE_LOCATION = 1
+    val REQUEST_BACKGROUND_LOCATION = 2
+    val REQUEST_TURN_DEVICE_LOCATION_ON = 3
+
+
     val reminderTitle = MutableLiveData<String>()
     val reminderDescription = MutableLiveData<String>()
     val reminderSelectedLocationStr = MutableLiveData<String>()
@@ -26,6 +33,19 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
     val goBack: LiveData<Boolean>
         get() = _goBack
     private var _goBack = MutableLiveData<Boolean>()
+
+    val checkBackgroundLocationPermission: LiveData<Boolean>
+        get() = _checkBackgroundLocationPermission
+    private var _checkBackgroundLocationPermission = MutableLiveData<Boolean>()
+
+    val checkForegroundLocationPermission: LiveData<Boolean>
+        get() = _checkForegroundLocationPermission
+    private var _checkForegroundLocationPermission = MutableLiveData<Boolean>()
+
+    private var runningQOrLater: Boolean = android.os.Build.VERSION.SDK_INT >=
+            android.os.Build.VERSION_CODES.Q
+
+    var permissionsGranted: Boolean = false
 
 
     /**
@@ -40,6 +60,8 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
         longitude.value = null
 
         _goBack.value = false
+        _checkForegroundLocationPermission.value = false
+        _checkBackgroundLocationPermission.value = false
     }
 
     /**
@@ -95,6 +117,46 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
         } else {
             reminderSelectedLocationStr.value = selectedPOI.value!!.name
             _goBack.value = true
+        }
+    }
+
+    fun checkLocationPermission() {
+        _checkForegroundLocationPermission.value = true
+    }
+
+    fun checkLocationSettings() {
+
+    }
+
+    fun handleRequestPermissionResult(requestCode: Int, grantResults: IntArray) {
+        if (requestCode == REQUEST_FINE_LOCATION) {
+            if (grantResults.isNotEmpty()
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            ) {
+                showToast.value = app.getString(R.string.permission_foreground_granted)
+                _checkForegroundLocationPermission.value = false
+                if (runningQOrLater) {
+                    _checkBackgroundLocationPermission.value = true
+                } else{
+                    permissionsGranted = true
+                }
+            } else {
+                permissionsGranted = false
+                showToast.value = app.getString(R.string.permission_denied_explanation)
+            }
+        }
+
+        if (requestCode == REQUEST_BACKGROUND_LOCATION) {
+            if (grantResults.isNotEmpty()
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            ) {
+                _checkBackgroundLocationPermission.value = false
+                permissionsGranted = true
+                showToast.value = app.getString(R.string.permission_background_granted)
+            } else {
+                permissionsGranted = false
+                showToast.value = app.getString(R.string.permission_denied_explanation)
+            }
         }
     }
 }

@@ -26,20 +26,11 @@ import java.util.*
 
 class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
-    companion object {
-        private const val REQUEST_FINE_LOCATION = 1
-        private const val REQUEST_BACKGROUND_LOCATION = 2
-        private const val REQUEST_TURN_DEVICE_LOCATION_ON = 3
-    }
-
     //Use Koin to get the view model of the SaveReminder
     override val _viewModel: SaveReminderViewModel by inject()
 
     private lateinit var binding: FragmentSelectLocationBinding
     private lateinit var map: GoogleMap
-
-    private var runningQOrLater = android.os.Build.VERSION.SDK_INT >=
-            android.os.Build.VERSION_CODES.Q
 
 
     @SuppressLint("MissingPermission")
@@ -53,10 +44,36 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         binding.lifecycleOwner = this
 
         _viewModel.goBack.observe(viewLifecycleOwner, androidx.lifecycle.Observer {
-            if(_viewModel.goBack.value!!){
+            if (_viewModel.goBack.value!!) {
                 findNavController().popBackStack()
             }
         })
+
+        _viewModel.checkForegroundLocationPermission.observe(
+            viewLifecycleOwner,
+            androidx.lifecycle.Observer {
+                if (_viewModel.checkForegroundLocationPermission.value!!) {
+                    if (!checkFineLocation()) {
+                        requestPermissions(
+                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                            _viewModel.REQUEST_FINE_LOCATION
+                        )
+                    }
+                }
+            })
+
+        _viewModel.checkBackgroundLocationPermission.observe(
+            viewLifecycleOwner,
+            androidx.lifecycle.Observer {
+                if (_viewModel.checkBackgroundLocationPermission.value!!) {
+                    if (!checkBackgroundLocation()) {
+                        requestPermissions(
+                            arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
+                            _viewModel.REQUEST_BACKGROUND_LOCATION
+                        )
+                    }
+                }
+            })
 
         setHasOptionsMenu(true)
         setDisplayHomeAsUpEnabled(true)
@@ -69,9 +86,6 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 //        TODO: put a marker to location that the user selected
 
 
-//        TODO: call this function after the user confirms on the selected location
-//        onLocationSelected()
-
         return binding.root
     }
 
@@ -80,64 +94,31 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         mapFragment.getMapAsync(this)
     }
 
-    private fun onLocationSelected() {
-        //        TODO: When the user confirms on the selected location,
-        //         send back the selected location details to the view model
-        //         and navigate back to the previous fragment to save the reminder and add the geofence
-    }
-
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _viewModel.onClear()
-        checkAndRequestFineLocation()
+        _viewModel.checkLocationPermission()
     }
 
-    private fun checkAndRequestFineLocation() {
-        if (!checkFineLocation()) {
-            requestPermissions(
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                REQUEST_FINE_LOCATION
-            )
-        }
-    }
 
-    private fun checkFineLocation() =
-        PackageManager.PERMISSION_GRANTED ==
+    private fun checkFineLocation(): Boolean {
+        _viewModel.permissionsGranted = PackageManager.PERMISSION_GRANTED ==
                 ActivityCompat.checkSelfPermission(
                     activity!!.applicationContext,
                     Manifest.permission.ACCESS_FINE_LOCATION
                 )
-
-
-    private fun checkAndRequestBackgroundLocation() {
-        if (runningQOrLater) {
-            if (!checkBackgroundLocation()) {
-                requestPermissions(
-                    arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
-                    REQUEST_BACKGROUND_LOCATION
-                )
-            }
-        }
+        return _viewModel.permissionsGranted
     }
 
-    private fun checkBackgroundLocation() =
-        PackageManager.PERMISSION_GRANTED ==
+
+    private fun checkBackgroundLocation(): Boolean {
+        _viewModel.permissionsGranted = PackageManager.PERMISSION_GRANTED ==
                 ActivityCompat.checkSelfPermission(
                     activity!!.applicationContext,
                     Manifest.permission.ACCESS_BACKGROUND_LOCATION
                 )
 
-
-    private fun permissionsGranted(): Boolean {
-        val foregroundLocationApproved = checkFineLocation()
-        val backgroundPermissionApproved =
-            if (runningQOrLater) {
-                checkBackgroundLocation()
-            } else {
-                true
-            }
-        return foregroundLocationApproved && backgroundPermissionApproved
+        return _viewModel.permissionsGranted
     }
 
 
@@ -146,45 +127,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        if (requestCode == REQUEST_FINE_LOCATION) {
-            if (grantResults.isNotEmpty()
-                && grantResults[0] == PackageManager.PERMISSION_GRANTED
-            ) {
-                Toast.makeText(
-                    activity!!.applicationContext,
-                    "Foreground permission granted",
-                    Toast.LENGTH_SHORT
-                ).show()
-                if (runningQOrLater) {
-                    checkAndRequestBackgroundLocation()
-                }
-            } else {
-                Toast.makeText(
-                    activity!!.applicationContext,
-                    "Foreground permission denied",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-
-        if (requestCode == REQUEST_BACKGROUND_LOCATION) {
-            if (grantResults.isNotEmpty()
-                && grantResults[0] == PackageManager.PERMISSION_GRANTED
-            ) {
-                Toast.makeText(
-                    activity!!.applicationContext,
-                    "Background permission granted",
-                    Toast.LENGTH_SHORT
-                ).show()
-            } else {
-                Toast.makeText(
-                    activity!!.applicationContext,
-                    "Background permission denied",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-
+        _viewModel.handleRequestPermissionResult(requestCode, grantResults)
     }
 
 
@@ -215,8 +158,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     @SuppressLint("MissingPermission")
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
-
-        if (permissionsGranted()) {
+        if (_viewModel.permissionsGranted) {
             map.isMyLocationEnabled = true
         }
 
