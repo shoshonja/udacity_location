@@ -1,10 +1,16 @@
 package com.udacity.project4.locationreminders.savereminder
 
 import android.app.Application
+import android.content.IntentSender
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.maps.model.PointOfInterest
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseViewModel
@@ -41,6 +47,14 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
     val checkForegroundLocationPermission: LiveData<Boolean>
         get() = _checkForegroundLocationPermission
     private var _checkForegroundLocationPermission = MutableLiveData<Boolean>()
+
+    val locationSettingsException: LiveData<ResolvableApiException>
+        get() = _locationSettingsException
+    private var _locationSettingsException = MutableLiveData<ResolvableApiException>()
+
+    val startGeofence: LiveData<Boolean>
+        get() = _startGeofence
+    private var _startGeofence = MutableLiveData<Boolean>()
 
     private var runningQOrLater: Boolean = android.os.Build.VERSION.SDK_INT >=
             android.os.Build.VERSION_CODES.Q
@@ -125,19 +139,43 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
     }
 
     fun checkLocationSettings() {
+        val locationRequest = LocationRequest.create().apply {
+            priority = LocationRequest.PRIORITY_LOW_POWER
+        }
 
+        val locationSettingsRequestBuilder =
+            LocationSettingsRequest.Builder().addLocationRequest(locationRequest)
+        val settingsClient = LocationServices.getSettingsClient(app)
+
+        val locationSettingsResponseTask =
+            settingsClient.checkLocationSettings(locationSettingsRequestBuilder.build())
+
+        locationSettingsResponseTask.addOnFailureListener { exception ->
+            if (exception is ResolvableApiException) {
+                _locationSettingsException.value = exception
+            } else {
+                showSnackBar.value = app.getString(R.string.location_required_error)
+                checkLocationSettings()
+            }
+        }
+
+        locationSettingsResponseTask.addOnCompleteListener {
+            if(it.isSuccessful){
+                _startGeofence.value = true
+            }
+        }
     }
 
-    fun handleRequestPermissionResult(requestCode: Int, grantResults: IntArray) {
+    fun handleRequestPermissionResult(requestCode: Int, grantResults: IntArray?) {
         if (requestCode == REQUEST_FINE_LOCATION) {
-            if (grantResults.isNotEmpty()
+            if (grantResults!!.isNotEmpty()
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED
             ) {
                 showToast.value = app.getString(R.string.permission_foreground_granted)
                 _checkForegroundLocationPermission.value = false
                 if (runningQOrLater) {
                     _checkBackgroundLocationPermission.value = true
-                } else{
+                } else {
                     permissionsGranted = true
                 }
             } else {
@@ -147,7 +185,7 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
         }
 
         if (requestCode == REQUEST_BACKGROUND_LOCATION) {
-            if (grantResults.isNotEmpty()
+            if (grantResults!!.isNotEmpty()
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED
             ) {
                 _checkBackgroundLocationPermission.value = false
@@ -157,6 +195,10 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
                 permissionsGranted = false
                 showToast.value = app.getString(R.string.permission_denied_explanation)
             }
+        }
+
+        if(requestCode == REQUEST_TURN_DEVICE_LOCATION_ON){
+            checkLocationSettings()
         }
     }
 }

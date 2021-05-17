@@ -1,10 +1,17 @@
 package com.udacity.project4.locationreminders.savereminder
 
+import android.content.Intent
+import android.content.IntentSender
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
 import com.udacity.project4.base.NavigationCommand
@@ -48,7 +55,15 @@ class SaveReminderFragment : BaseFragment() {
             val latitude = _viewModel.latitude.value
             val longitude = _viewModel.longitude.value
 
-            _viewModel.validateAndSaveReminder(ReminderDataItem(title, description, location, latitude, longitude))
+            _viewModel.validateAndSaveReminder(
+                ReminderDataItem(
+                    title,
+                    description,
+                    location,
+                    latitude,
+                    longitude
+                )
+            )
 
 //            TODO: use the user entered reminder details to:
 //             1) add a geofencing request
@@ -56,9 +71,18 @@ class SaveReminderFragment : BaseFragment() {
         }
     }
 
+    private fun checkLocationturnedOn(resolve: Boolean = true) {
+
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         //make sure to clear the view model after destroy, as it's a single view model.
         _viewModel.onClear()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        _viewModel.handleRequestPermissionResult(requestCode, null)
     }
 }
