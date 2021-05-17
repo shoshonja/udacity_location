@@ -1,10 +1,13 @@
 package com.udacity.project4.locationreminders.savereminder
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.Observer
+import androidx.navigation.fragment.findNavController
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
 import com.udacity.project4.base.NavigationCommand
@@ -36,7 +39,6 @@ class SaveReminderFragment : BaseFragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.lifecycleOwner = this
         binding.selectLocation.setOnClickListener {
-            //            Navigate to another fragment to get the user location
             _viewModel.navigationCommand.value =
                 NavigationCommand.To(SaveReminderFragmentDirections.actionSaveReminderFragmentToSelectLocationFragment())
         }
@@ -48,17 +50,43 @@ class SaveReminderFragment : BaseFragment() {
             val latitude = _viewModel.latitude.value
             val longitude = _viewModel.longitude.value
 
-            _viewModel.validateAndSaveReminder(ReminderDataItem(title, description, location, latitude, longitude))
-
+            if (!_viewModel.checkLocationEnabled()) {
+                _viewModel.requestLocationEnabled()
+            } else {
+                _viewModel.validateAndSaveReminder(
+                    ReminderDataItem(
+                        title,
+                        description,
+                        location,
+                        latitude,
+                        longitude
+                    )
+                )
+            }
 //            TODO: use the user entered reminder details to:
 //             1) add a geofencing request
 //             2) save the reminder to the local db
         }
+
+        _viewModel.goBack.observe(viewLifecycleOwner, Observer {
+            if (_viewModel.goBack.value!!) {
+                findNavController().popBackStack()
+            }
+        })
+
+        _viewModel.locationSettingsException.observe(viewLifecycleOwner, Observer { exception ->
+            exception.startResolutionForResult(activity, _viewModel.REQUEST_TURN_DEVICE_LOCATION_ON)
+        })
     }
 
     override fun onDestroy() {
         super.onDestroy()
         //make sure to clear the view model after destroy, as it's a single view model.
         _viewModel.onClear()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        _viewModel.handleActivityResult(requestCode, resultCode)
     }
 }

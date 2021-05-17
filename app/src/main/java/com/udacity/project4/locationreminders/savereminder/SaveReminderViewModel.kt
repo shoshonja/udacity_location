@@ -1,10 +1,17 @@
 package com.udacity.project4.locationreminders.savereminder
 
 import android.app.Application
+import android.content.Context
 import android.content.pm.PackageManager
+import android.location.LocationManager
+import androidx.core.location.LocationManagerCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.maps.model.PointOfInterest
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseViewModel
@@ -21,6 +28,7 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
     val REQUEST_FINE_LOCATION = 1
     val REQUEST_BACKGROUND_LOCATION = 2
     val REQUEST_TURN_DEVICE_LOCATION_ON = 3
+    val RESULT_OK = -1
 
 
     val reminderTitle = MutableLiveData<String>()
@@ -44,6 +52,14 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
 
     private var runningQOrLater: Boolean = android.os.Build.VERSION.SDK_INT >=
             android.os.Build.VERSION_CODES.Q
+
+    val locationSettingsException: LiveData<ResolvableApiException>
+        get() = _locationSettingsException
+    private var _locationSettingsException = MutableLiveData<ResolvableApiException>()
+
+    val startGeofence: LiveData<Boolean>
+        get() = _startGeofence
+    private var _startGeofence = MutableLiveData<Boolean>()
 
     var permissionsGranted: Boolean = false
 
@@ -124,9 +140,40 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
         _checkForegroundLocationPermission.value = true
     }
 
-    fun checkLocationSettings() {
+    fun checkLocationEnabled(): Boolean{
+        val locationManager = app.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return LocationManagerCompat.isLocationEnabled(locationManager)
 
     }
+
+    fun requestLocationEnabled(){
+        val locationRequest = LocationRequest.create().apply {
+            priority = LocationRequest.PRIORITY_LOW_POWER
+        }
+
+        val locationSettingsRequestBuilder =
+            LocationSettingsRequest.Builder().addLocationRequest(locationRequest)
+        val settingsClient = LocationServices.getSettingsClient(app)
+
+        val locationSettingsResponseTask =
+            settingsClient.checkLocationSettings(locationSettingsRequestBuilder.build())
+
+        locationSettingsResponseTask.addOnFailureListener { exception ->
+            if (exception is ResolvableApiException) {
+                _locationSettingsException.value = exception
+            } else {
+                showToast.value = app.getString(R.string.location_required_error)
+//                showSnackBar.value = app.getString(R.string.location_required_error)
+            }
+        }
+
+        locationSettingsResponseTask.addOnCompleteListener {
+            if(it.isSuccessful){
+                _startGeofence.value = true
+            }
+        }
+    }
+
 
     fun handleRequestPermissionResult(requestCode: Int, grantResults: IntArray) {
         if (requestCode == REQUEST_FINE_LOCATION) {
@@ -146,7 +193,7 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
             }
         }
 
-        if (requestCode == REQUEST_BACKGROUND_LOCATION) {
+        if (requestCode == REQUEST_BACKGROUND_LOCATION){
             if (grantResults.isNotEmpty()
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED
             ) {
@@ -156,6 +203,17 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
             } else {
                 permissionsGranted = false
                 showToast.value = app.getString(R.string.permission_denied_explanation)
+            }
+        }
+    }
+
+    fun handleActivityResult(requestCode: Int, resultCode: Int){
+        if(requestCode == REQUEST_TURN_DEVICE_LOCATION_ON){
+            if(resultCode == RESULT_OK){
+                _startGeofence.value = true
+            } else {
+                showToast.value = app.getString(R.string.location_required_error)
+                _goBack.value = true
             }
         }
     }
