@@ -68,6 +68,7 @@ class SaveReminderFragment : BaseFragment() {
 //             2) save the reminder to the local db
         }
 
+        _viewModel.resetBackOption()
         _viewModel.goBack.observe(viewLifecycleOwner, Observer {
             if (_viewModel.goBack.value!!) {
                 findNavController().popBackStack()

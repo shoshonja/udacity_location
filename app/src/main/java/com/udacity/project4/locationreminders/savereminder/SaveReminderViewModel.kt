@@ -80,6 +80,10 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
         _checkBackgroundLocationPermission.value = false
     }
 
+    fun resetBackOption(){
+        _goBack.value = false
+    }
+
     /**
      * Validate the entered data then saves the reminder data to the DataSource
      */
